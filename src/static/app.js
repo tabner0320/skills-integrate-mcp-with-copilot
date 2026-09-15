@@ -3,6 +3,39 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+  const toggleRegisterButton = document.getElementById("toggle-register");
+  const logoutButton = document.getElementById("logout-button");
+  const passwordForm = document.getElementById("password-form");
+  const authStatus = document.getElementById("auth-status");
+  let currentAccount = null;
+
+  function showMessage(message, type) {
+    messageDiv.textContent = message;
+    messageDiv.className = type;
+    messageDiv.classList.remove("hidden");
+    setTimeout(() => messageDiv.classList.add("hidden"), 5000);
+  }
+
+  function updateAuthUI(account) {
+    currentAccount = account;
+    const signedIn = Boolean(account);
+    authStatus.textContent = signedIn
+      ? `Signed in as ${account.full_name} (${account.role})`
+      : "Not signed in";
+    loginForm.classList.toggle("hidden", signedIn);
+    registerForm.classList.toggle("hidden", signedIn || !registerForm.classList.contains("expanded"));
+    toggleRegisterButton.classList.toggle("hidden", signedIn);
+    logoutButton.classList.toggle("hidden", !signedIn);
+    passwordForm.classList.toggle("hidden", !signedIn);
+    signupForm.querySelector("button").disabled = !signedIn;
+  }
+
+  async function loadCurrentUser() {
+    const response = await fetch("/auth/me");
+    updateAuthUI(response.ok ? await response.json() : null);
+  }
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -29,8 +62,11 @@ document.addEventListener("DOMContentLoaded", () => {
               <ul class="participants-list">
                 ${details.participants
                   .map(
-                    (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
+                    (email) => `<li><span class="participant-email">${email}</span>${
+                      currentAccount && currentAccount.email === email
+                        ? `<button class="delete-btn" data-activity="${name}" data-email="${email}" aria-label="Unregister from ${name}">Remove</button>`
+                        : ""
+                    }</li>`
                   )
                   .join("")}
               </ul>
@@ -75,9 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(
-          activity
-        )}/unregister?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activity)}/unregister`,
         {
           method: "DELETE",
         }
@@ -86,8 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
+        showMessage(result.message, "success");
 
         // Refresh activities list to show updated participants
         fetchActivities();
@@ -96,16 +129,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.className = "error";
       }
 
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
     } catch (error) {
-      messageDiv.textContent = "Failed to unregister. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
+      showMessage("Failed to unregister. Please try again.", "error");
       console.error("Error unregistering:", error);
     }
   }
@@ -114,14 +139,11 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value;
     const activity = document.getElementById("activity").value;
 
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(
-          activity
-        )}/signup?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activity)}/signup`,
         {
           method: "POST",
         }
@@ -130,31 +152,92 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
+        showMessage(result.message, "success");
         signupForm.reset();
 
         // Refresh activities list to show updated participants
         fetchActivities();
       } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        showMessage(result.detail || "An error occurred", "error");
       }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
     } catch (error) {
-      messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
+      showMessage("Failed to sign up. Please try again.", "error");
       console.error("Error signing up:", error);
     }
   });
 
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const response = await fetch("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("login-username").value,
+        password: document.getElementById("login-password").value,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) return showMessage(result.detail, "error");
+    loginForm.reset();
+    updateAuthUI(result);
+    fetchActivities();
+    showMessage("Logged in successfully", "success");
+  });
+
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const response = await fetch("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("register-username").value,
+        full_name: document.getElementById("register-name").value,
+        email: document.getElementById("register-email").value,
+        password: document.getElementById("register-password").value,
+        date_of_birth: document.getElementById("register-dob").value,
+        role: document.getElementById("register-role").value,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) return showMessage(result.detail, "error");
+    registerForm.reset();
+    registerForm.classList.remove("expanded");
+    updateAuthUI(null);
+    showMessage("Account created. Please log in.", "success");
+  });
+
+  toggleRegisterButton.addEventListener("click", () => {
+    registerForm.classList.toggle("expanded");
+    updateAuthUI(null);
+    toggleRegisterButton.textContent = registerForm.classList.contains("expanded")
+      ? "Cancel account creation"
+      : "Create an account";
+  });
+
+  logoutButton.addEventListener("click", async () => {
+    await fetch("/auth/logout", { method: "POST" });
+    updateAuthUI(null);
+    fetchActivities();
+    showMessage("Logged out", "success");
+  });
+
+  passwordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const response = await fetch("/auth/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        current_password: document.getElementById("current-password").value,
+        new_password: document.getElementById("new-password").value,
+      }),
+    });
+    const result = await response.json();
+    showMessage(result.message || result.detail, response.ok ? "success" : "error");
+    if (response.ok) passwordForm.reset();
+  });
+
   // Initialize app
+  updateAuthUI(null);
+  loadCurrentUser();
   fetchActivities();
 });

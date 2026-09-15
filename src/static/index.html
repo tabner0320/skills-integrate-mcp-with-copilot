@@ -13,6 +13,60 @@
     </header>
 
     <main>
+      <section id="auth-container">
+        <h3>Account</h3>
+        <div id="auth-status">Not signed in</div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-username">Username:</label>
+            <input type="text" id="login-username" required autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password:</label>
+            <input type="password" id="login-password" required autocomplete="current-password" />
+          </div>
+          <button type="submit">Log in</button>
+        </form>
+        <form id="register-form" class="hidden">
+          <div class="form-group">
+            <label for="register-username">Username:</label>
+            <input type="text" id="register-username" required minlength="3" />
+          </div>
+          <div class="form-group">
+            <label for="register-name">Full name:</label>
+            <input type="text" id="register-name" required />
+          </div>
+          <div class="form-group">
+            <label for="register-email">Email:</label>
+            <input type="email" id="register-email" required />
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password:</label>
+            <input type="password" id="register-password" required minlength="8" autocomplete="new-password" />
+          </div>
+          <div class="form-group">
+            <label for="register-dob">Date of birth:</label>
+            <input type="date" id="register-dob" required />
+          </div>
+          <div class="form-group">
+            <label for="register-role">Account type:</label>
+            <select id="register-role" required>
+              <option value="student">Student</option>
+              <option value="club">Club</option>
+            </select>
+          </div>
+          <button type="submit">Create account</button>
+        </form>
+        <button id="toggle-register" type="button" class="secondary-button">Create an account</button>
+        <button id="logout-button" type="button" class="hidden">Log out</button>
+        <form id="password-form" class="hidden">
+          <h4>Change password</h4>
+          <input type="password" id="current-password" required placeholder="Current password" />
+          <input type="password" id="new-password" required minlength="8" placeholder="New password" />
+          <button type="submit">Change password</button>
+        </form>
+      </section>
+
       <section id="activities-container">
         <h3>Available Activities</h3>
         <div id="activities-list">
@@ -25,17 +79,13 @@
         <h3>Sign Up for an Activity</h3>
         <form id="signup-form">
           <div class="form-group">
-            <label for="email">Student Email:</label>
-            <input type="email" id="email" required placeholder="your-email@mergington.edu" />
-          </div>
-          <div class="form-group">
             <label for="activity">Select Activity:</label>
             <select id="activity" required>
               <option value="">-- Select an activity --</option>
               <!-- Activity options will be loaded here -->
             </select>
           </div>
-          <button type="submit">Sign Up</button>
+          <button type="submit">Sign Up as signed-in user</button>
         </form>
         <div id="message" class="hidden"></div>
       </section>
